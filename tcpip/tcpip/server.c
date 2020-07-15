@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
 #include <WinSock2.h>
@@ -91,26 +92,31 @@ int main(void)
 	}
 	printf("客户端连接成功.\n");
 
-	int sres = send(socketClient, "I am server, we connected.", sizeof("I am server, we connected."), 0);
-	if (sres == SOCKET_ERROR) {
-		int a = WSAGetLastError();
-	}
+	while (1) {
 
-	char buf[1500] = { 0 };
-	int res = recv(socketClient, buf, 1499, 0);
-	if (res == 0)
-	{
-		printf("连接断开");
-		return 0;
-	}
-	else if (res == SOCKET_ERROR)
-	{
-		//error
-	}
-	else
-	{
-		//success
-		printf("%s\n", buf);
+
+		char buf[1500] = { 0 };
+		int res = recv(socketClient, buf, 1499, 0);
+		if (res == 0)
+		{
+			printf("连接断开");
+			return 0;
+		}
+		else if (res == SOCKET_ERROR)
+		{
+			//error
+		}
+		else
+		{
+			//success
+			printf("%s\n", buf);
+		}
+
+		scanf("%s", buf);
+		int sres = send(socketClient, buf, strlen(buf), 0);
+		if (sres == SOCKET_ERROR) {
+			int a = WSAGetLastError();
+		}
 	}
 	
 	

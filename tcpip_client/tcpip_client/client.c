@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
 #include <WinSock2.h>
@@ -40,6 +41,7 @@ int main(void)
 	}
 	//创建server的socket
 	SOCKET socketServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
 	//检验是否成功
 	if (INVALID_SOCKET == socketServer)
 	{
@@ -70,27 +72,33 @@ int main(void)
 	}
 
 	//开始通信
-	char buf[1500] = { 0 };
-	int res = recv(socketServer, buf, 1499, 0);//接受服务器的消息
-	if (res == 0)
-	{
-		printf("连接断开");
-		return 0;
-	}
-	else if (res == SOCKET_ERROR)
-	{
-		//error
-	}
-	else
-	{
-		//success
-		printf("%d  %s\n", res, buf);
+	while (1) {
+		char buf[1500] = { 0 };
+		
+		scanf("%s", buf);
+		int sres = send(socketServer, buf, strlen(buf), 0);
+		if (sres == SOCKET_ERROR) {
+			int a = WSAGetLastError();
+		}
+
+		int res = recv(socketServer, buf, 1499, 0);
+		if (res == 0)
+		{
+			printf("连接断开");
+			return 0;
+		}
+		else if (res == SOCKET_ERROR)
+		{
+			//error
+		}
+		else
+		{
+			//success
+			printf("%s\n", buf);
+		}
+
 	}
 
-	int sres = send(socketServer, "I am client, hello.", sizeof("I am client, hello."), 0);
-	if (sres == SOCKET_ERROR) {
-		int a = WSAGetLastError();
-	}
 
 	//用完socket关闭
 	closesocket(socketServer);
