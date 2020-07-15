@@ -38,7 +38,7 @@ int main(void)
 		WSACleanup();
 		return 0;
 	}
-	//创建socket
+	//创建server的socket
 	SOCKET socketServer = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	//检验是否成功
 	if (INVALID_SOCKET == socketServer)
@@ -46,23 +46,22 @@ int main(void)
 		int res = WSAGetLastError();
 		switch (res)
 		{
-			case WSANOTINITIALISED:
-				break;
-			case WSAENETDOWN:
-				break;
+		case WSANOTINITIALISED:
+			break;
+		case WSAENETDOWN:
+			break;
 			//...
 		}
 		WSACleanup();
 		return 0;
 	}
 
-	//绑定地址和端口
+	//绑定server的socket和server的地址端口
 	struct sockaddr_in sin; //SOCKADDR_IN sin;
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(12345);
-	//sin.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
-	InetPton(AF_INET, TEXT("127.0.0.1"), &sin.sin_addr.s_addr);
-	int bres = bind(socketServer, (const struct sockaddr*)&sin, sizeof(struct sockaddr_in));
+	sin.sin_port = htons(12345);//需要和server的端口一致
+	InetPton(AF_INET, TEXT("127.0.0.1"), &sin.sin_addr.s_addr);//需要和server的地址一致
+	int bres = connect(socketServer, (const struct sockaddr*)&sin, sizeof(struct sockaddr_in));
 	if (SOCKET_ERROR == bres) {
 		int err = WSAGetLastError();
 		closesocket(socketServer);
@@ -70,34 +69,9 @@ int main(void)
 		return 0;
 	}
 
-	bres = listen(socketServer, SOMAXCONN);
-	if (SOCKET_ERROR == bres) {
-		int err = WSAGetLastError();
-		closesocket(socketServer);
-		WSACleanup();
-		return 0;
-	}
-
-	//创建客户端的socket
-	struct sockaddr_in clientsin;
-	int len = sizeof(clientsin);
-	SOCKET socketClient = accept(socketServer, (struct sockaddr*)&clientsin, &len);
-	if (INVALID_SOCKET == socketClient) {
-		printf("客户端连接失败.");
-		int err = WSAGetLastError();
-		closesocket(socketServer);
-		WSACleanup();
-		return 0;
-	}
-	printf("客户端连接成功.\n");
-
-	int sres = send(socketClient, "I am server, we connected.", sizeof("I am server, we connected."), 0);
-	if (sres == SOCKET_ERROR) {
-		int a = WSAGetLastError();
-	}
-
+	//开始通信
 	char buf[1500] = { 0 };
-	int res = recv(socketClient, buf, 1499, 0);
+	int res = recv(socketServer, buf, 1499, 0);//接受服务器的消息
 	if (res == 0)
 	{
 		printf("连接断开");
@@ -110,13 +84,15 @@ int main(void)
 	else
 	{
 		//success
-		printf("%s\n", buf);
+		printf("%d  %s\n", res, buf);
 	}
-	
-	
+
+	int sres = send(socketServer, "I am client, hello.", sizeof("I am client, hello."), 0);
+	if (sres == SOCKET_ERROR) {
+		int a = WSAGetLastError();
+	}
 
 	//用完socket关闭
-	closesocket(socketClient);
 	closesocket(socketServer);
 	WSACleanup();
 
