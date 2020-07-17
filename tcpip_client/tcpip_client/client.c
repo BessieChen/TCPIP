@@ -76,26 +76,27 @@ int main(void)
 		char buf[1500] = { 0 };
 		
 		scanf("%s", buf);
+		if ('0' == buf[0]) break;
 		int sres = send(socketServer, buf, strlen(buf), 0);
 		if (sres == SOCKET_ERROR) {
 			int a = WSAGetLastError();
 		}
 
-		int res = recv(socketServer, buf, 1499, 0);
-		if (res == 0)
-		{
-			printf("连接断开");
-			return 0;
-		}
-		else if (res == SOCKET_ERROR)
-		{
-			//error
-		}
-		else
-		{
-			//success
-			printf("%s\n", buf);
-		}
+		//int res = recv(socketServer, buf, 1499, 0);
+		//if (res == 0)
+		//{
+		//	printf("连接断开");
+		//	return 0;
+		//}
+		//else if (res == SOCKET_ERROR)
+		//{
+		//	//error
+		//}
+		//else
+		//{
+		//	//success
+		//	printf("%s\n", buf);
+		//}
 
 	}
 

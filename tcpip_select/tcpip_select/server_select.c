@@ -82,8 +82,74 @@ int main(void)
 	}
 
 	//以下是不同于c/s模型的部分
-	fd_set clientSockets;
-	FD_ZERO(&clientSockets);
+	fd_set allSockets;
+	FD_ZERO(&allSockets);
+	//将server装入
+	FD_SET(socketServer, &allSockets);
+
+	struct timeval tv;
+	tv.tv_sec = 100;
+	tv.tv_usec = 0;
+
+	while (1) {
+		fd_set tempArray = allSockets;
+		int res = select(0, &tempArray, NULL, NULL, &tv);
+		if (res == 0) {
+			continue;
+		}
+		else if (res > 0) {
+			//有响应
+			for (u_int i = 0; i < tempArray.fd_count; i++) {
+				SOCKET current = tempArray.fd_array[i];
+				if (tempArray.fd_array[i] == socketServer) {
+					//响应传来的是socketServer,需要链接它
+					//也就是通过accept()去生成一个client的socket
+					SOCKET clientSocket = accept(tempArray.fd_array[i], NULL, NULL);
+					if (clientSocket == INVALID_SOCKET)
+					{
+						printf("clientSocket is wrong");
+						int a = WSAGetLastError();
+						//printf(a);
+						continue;
+					}
+
+					//也就是链接好了一个新client,需要加入socketArray中
+					FD_SET(clientSocket, &allSockets);
+					printf("add one client.\n");
+				}
+				else {
+					char buffer[1500] = { 0 };
+					int res = recv(tempArray.fd_array[i], buffer, 1499, 0);
+					if (res == 0) {
+						//client下线
+						//需要从array中删除clientSocket并且关闭这个socket
+						SOCKET temp = tempArray.fd_array[i];
+						FD_CLR(tempArray.fd_array[i], &allSockets);
+						closesocket(temp);
+						printf("remove one client.");
+						continue;
+					}
+					else if (res > 0)
+					{
+						printf("%s\n",buffer);
+						continue;
+					}
+					else {
+						printf("error in recv()");
+						int a = WSAGetLastError();
+						//printf(a);
+					}
+				}
+			}
+		}
+		else
+		{
+
+		}
+
+	}
+	//以下为fd_set()和fd_clr()
+	/*
 	FD_SET(socketServer, &clientSockets);
 	FD_CLR(socketServer, &clientSockets);
 	closesocket(socketServer);
@@ -92,6 +158,7 @@ int main(void)
 	{
 		printf("server socket is not in set");
 	}
+	*/
 
 
 
