@@ -6,8 +6,21 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 
+fd_set allSockets;
+BOOL WINAPI func(DWORD dwCtrlType) {
+	switch (dwCtrlType) {
+	case CTRL_CLOSE_EVENT: 
+		//释放
+		for (u_int i = 0; i < allSockets.fd_count; i++) {
+			closesocket(allSockets.fd_array[i]);
+		}
+		WSACleanup();
+	}
+	return TRUE;
+}
 int main(void)
 {
+	SetConsoleCtrlHandler(func, TRUE);
 	WORD wdVersion = MAKEWORD(2, 2);
 	WSADATA wdSockMsg;
 	//创建网络库
@@ -93,18 +106,61 @@ int main(void)
 
 	while (1) {
 		fd_set tempArray = allSockets;
-		int res = select(0, &tempArray, NULL, NULL, &tv);
+		fd_set writeArray = allSockets;
+		FD_CLR(socketServer, &writeArray);//因为server给自己send是不符合逻辑的,所以把socketServer从writearray删除
+		fd_set errorArray = allSockets;
+		int res = select(0, &tempArray, &writeArray, &errorArray, &tv);
 		if (res == 0) {
 			continue;
 		}
 		else if (res > 0) {
-			//有响应
+			//read有响应
 			for (u_int i = 0; i < tempArray.fd_count; i++) {
 				SOCKET current = tempArray.fd_array[i];
-				if (tempArray.fd_array[i] == socketServer) {
+				//if (tempArray.fd_array[i] == socketServer) {
+				//	//响应传来的是socketServer,需要链接它
+				//	//也就是通过accept()去生成一个client的socket
+				//	SOCKET clientSocket = accept(tempArray.fd_array[i], NULL, NULL);
+				//	if (clientSocket == INVALID_SOCKET)
+				//	{
+				//		printf("clientSocket is wrong");
+				//		int a = WSAGetLastError();
+				//		//printf(a);
+				//		continue;
+				//	}
+
+				//	//也就是链接好了一个新client,需要加入socketArray中
+				//	FD_SET(clientSocket, &allSockets);
+				//	printf("add one client.\n");
+				//}
+				//else {
+				//	char buffer[1500] = { 0 };
+				//	int res = recv(tempArray.fd_array[i], buffer, 1499, 0);
+				//	if (res == 0) {
+				//		//client下线
+				//		//需要从array中删除clientSocket并且关闭这个socket
+				//		SOCKET temp = tempArray.fd_array[i];
+				//		FD_CLR(tempArray.fd_array[i], &allSockets);
+				//		closesocket(temp);
+				//		printf("remove one client.\n");
+				//		continue;
+				//	}
+				//	else if (res > 0)
+				//	{
+				//		printf("%s\n",buffer);
+				//		continue;
+				//	}
+				//	else {
+				//		printf("error in recv()");
+				//		int a = WSAGetLastError();
+				//		//printf(a);
+				//	}
+				//}
+
+				if (current == socketServer) {
 					//响应传来的是socketServer,需要链接它
 					//也就是通过accept()去生成一个client的socket
-					SOCKET clientSocket = accept(tempArray.fd_array[i], NULL, NULL);
+					SOCKET clientSocket = accept(current, NULL, NULL);
 					if (clientSocket == INVALID_SOCKET)
 					{
 						printf("clientSocket is wrong");
@@ -119,32 +175,51 @@ int main(void)
 				}
 				else {
 					char buffer[1500] = { 0 };
-					int res = recv(tempArray.fd_array[i], buffer, 1499, 0);
+					int res = recv(current, buffer, 1499, 0);
 					if (res == 0) {
 						//client下线
 						//需要从array中删除clientSocket并且关闭这个socket
-						SOCKET temp = tempArray.fd_array[i];
-						FD_CLR(tempArray.fd_array[i], &allSockets);
+						SOCKET temp = current;
+						FD_CLR(current, &allSockets);
 						closesocket(temp);
-						printf("remove one client.");
+						printf("remove one client.\n");
 						continue;
 					}
 					else if (res > 0)
 					{
-						printf("%s\n",buffer);
+						printf("%s\n", buffer);
 						continue;
 					}
 					else {
-						printf("error in recv()");
+						printf("error in recv()\n");
 						int a = WSAGetLastError();
-						//printf(a);
+						switch (a)
+						{
+						case 10054:
+						{
+							SOCKET temp = tempArray.fd_array[i];//需要在case里面加花括号,否则显示"声明不能包含标签"
+							FD_CLR(tempArray.fd_array[i], &allSockets);
+							closesocket(temp);
+						}
+						}
 					}
 				}
+			}
+			for (u_int i = 0; i < writeArray.fd_count; i++) {
+				if (send(writeArray.fd_array[i], "hi", 2, 0) == SOCKET_ERROR) {
+					int a = WSAGetLastError();
+				}
+			}
+			for (u_int i = 0; i < errorArray.fd_count; i++) {
+				char buf[100] = { 0 };
+				int buflen = 99;
+				if (getsockopt(errorArray.fd_array[i], SOL_SOCKET, SO_ERROR, buf, &buflen) == SOCKET_ERROR)
+					printf("no error info\n");
 			}
 		}
 		else
 		{
-
+			break;//遇到错误的时候退出,正常的服务器不能退出
 		}
 
 	}
@@ -160,10 +235,10 @@ int main(void)
 	}
 	*/
 
-
-
 	//用完socket关闭
-	closesocket(socketServer);
+	for(u_int i = 0; i < allSockets.fd_count; i++) {
+		closesocket(allSockets.fd_array[i]);
+	}
 	WSACleanup();
 
 	system("pause");
